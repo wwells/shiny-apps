@@ -16,7 +16,6 @@ Run application
 
 ```
 sudo docker run --rm  -p 80:80 --name gunviolence quay.io/wwells/gunviolence
-
 ```
 
 ### Option 2:  Roll your own

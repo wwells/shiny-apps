@@ -2,41 +2,34 @@ library(xts)
 library(shiny)
 library(dplyr)
 library(leaflet)
+library(RColorBrewer)
 
 all <- readRDS("Data/GunsGeo.rds")
 
-## Behavoir?
-#  Radial size by Injured vs Killed
-#  Coloring by Threshold for Injured vs Killed?
-##     Legend, if gradation?
-#  Subset by Year?   Is that important?
-#  Initial page serve:   Have all Plotted?  
-
-
-#https://stackoverflow.com/questions/41021237/animated-marker-moving-and-or-path-trajectory-with-leaflet-and-r
-# define ui with slider and animation control for time
 ui <- navbarPage("US Gun Violence", id="nav",
         tabPanel("Interactive Map",
             div(class="outer",
                 tags$head(
-                    # Include our custom CSS
                     includeCSS("Assets/styles.css")
                      ),
                 leafletOutput("map", width="100%", height="100%"), 
                 absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
                           draggable = TRUE, top = 60, left = "auto", right = 20, bottom = "auto",
                           width = 330, height = "auto",
-                h2("Gun Data Explorer"),
-                radioButtons("incidentweight", "Incident Radial Weight:",
-                                   c("Killed", "Injured"), selected = "Killed"),
-                sliderInput(inputId = "date", label = "Time", min = min(all$Date), 
-                            max = max(all$Date),
-                            value = min(all$Date),
-                            step=86400 * 7 * 4, # set to increment by 60 seconds, adjust appropriately
-                            animate=T),
-                radioButtons("showall", "Show All Incidents: ",
-                             "Show All")
-                ),
+                    h2("Gun Data Explorer"),
+                    h4("2014-2017"),
+                    radioButtons("incidentweight", "Incident Factor:",
+                                       c("Killed"="Killed", "Injured"="Injured"), selected = "Killed", inline=TRUE),
+                    sliderInput(inputId = "date", label = "Animate", min = min(all$Date), 
+                                max = max(all$Date),
+                                value = max(all$Date),
+                                ticks = F,
+                                step=365/12, 
+                                animate = animationOptions(interval = 1000,
+                                                           playButton = icon('play', "fa-3x"),
+                                                           pauseButton = icon('pause', "fa-3x"))),
+                    textOutput("counts")
+                    ),
                 tags$div(id="cite",
                          'Data source:  The Gun Violence Archive, 2014-2017.'
                 )
@@ -66,7 +59,7 @@ ui <- navbarPage("US Gun Violence", id="nav",
                         verified data to those who need to use it in their research, advocacy or writing.
                       "),
                     h3("Source Code"),
-                    div(HTML("<a href='https://github.com/rstudio/shiny-examples/tree/master/063-superzip-example'>MYREPO</a>")),
+                    div(HTML("<a href='https://github.com/wwells/shiny-apps/tree/master/gunviolence'>https://github.com/wwells/shiny-apps/tree/master/gunviolence</a>")),
                     h3("References"),
                     div(HTML("<a href='https://github.com/rstudio/shiny-examples/tree/master/063-superzip-example'>Shiny-R SuperZip Example</a>"))
                 ))
@@ -74,52 +67,74 @@ ui <- navbarPage("US Gun Violence", id="nav",
 )
 
 server <- function(input, output, session) {
-    points <- reactive({
-        all %>% 
-            filter(Date == input$date)
-    })
-    
     history <- reactive({
         all %>%
             filter(Date <= input$date)
     })
     
-    radialweight <- reactive({
-        input$incidentweight
+    color <- reactive({
+        if (input$incidentweight == "Killed") {
+            col = "OrRd"
+        } else {
+            col = "YlGn"
+        }
+    })
+    
+    sc <- reactiveVal(7000)
+    
+    observeEvent(input$incidentweight, {
+        if (input$incidentweight == "Killed") {
+            newValue <- 7000
+            sc(newValue)
+        } else {
+            newValue <- 4000
+            sc(newValue)
+        }
+    })
+    
+    name <- reactive({
+        if (input$incidentweight == "Killed") {
+            nam = "Killed"
+        } else {
+            nam = "Injured"
+        }
+    })
+    
+    output$counts <- renderText({
+        c <- sum(history()[[input$incidentweight]])
+        paste("Total ", name(), ": ", c)
+    })
+    
+    colorpal <- reactive({
+        colorNumeric(color(), all[[input$incidentweight]])
     })
     
     output$map <- renderLeaflet({
         leaflet() %>%
             addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', 
                      attribution='Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>') %>%  # Add default OpenStreetMap map tiles%>%
-            addCircles(lng = ~lon,
-                       lat = ~lat,
-                       weight = ~radialweight(),
-                       popup= ~Content,
-                       stroke = TRUE, 
-                       fillOpacity = 0.8,
-                       data = points()) %>%
-            addCircles(lng = ~lon,
-                       lat = ~lat,
-                       weight = ~radialweight(),
-                       popup= ~Content,
-                       stroke = TRUE, 
-                       fillOpacity = 0.8,
-                       data = history()) %>%
+            addLegend(position = "bottomright",
+                      pal = colorpal(), values = all[[input$incidentweight]],
+                      title = name()) %>%
             setView(lng = -83.7129, lat = 37.0902, zoom = 4)
     })
     
     observe({
-        leafletProxy("map", data = points()) %>%
+        pal <- colorpal()
+        proxy <- leafletProxy("map", data = history()) 
+        proxy %>%
             clearShapes() %>%
             addCircles(lng = ~lon,
                        lat = ~lat,
-                       weight = ~radialweight(),
+                       radius = ~history()[[input$incidentweight]] * sc(),
+                       weight = 1,
                        popup= ~Content,
-                       stroke = TRUE, 
-                       fillOpacity = 0.8,
+                       color = "#777777",
+                       fillColor = ~pal(history()[[input$incidentweight]]),
+                       stroke = F, 
+                       fillOpacity = 0.7,
                        data = history()
-            )
+            ) 
     })
 }
 

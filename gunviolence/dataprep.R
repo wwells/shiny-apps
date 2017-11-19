@@ -16,11 +16,15 @@ DataPrep <- function(all) {
     geo_reply <- geocode(all$FullAddress, override_limit=TRUE)
     all <- cbind(all, geo_reply)
     
+    #complete <- complete.cases(all)
+    #completed <- all[complete,]
+    #incomplete <- all[!complete,]
+    
     all <- select(all, Incident.Date, FullAddress, lat, lon, X..Killed, X..Injured)
     names(all) <- c("Date", "Address", "lat", "lon", "Killed", "Injured")
     
     all$Date <- as.Date(all$Date, format="%d-%B-%y")
-    all$Date <- as.POSIXct(all$Date, format="%Y-%m-%d") #needed for animation?
+    #all$Date <- as.POSIXct(all$Date, format="%Y-%m-%d") #needed for animation?
     all <- all[order(all$Date), ]
     
     all$Content <- paste0("<b>Date: </b>", all$Date, "<br/>",
