@@ -1,2 +1,4 @@
 # shiny-apps
-ShinyR Application Ideas
+
+Collection of ShinyR Applications
+
