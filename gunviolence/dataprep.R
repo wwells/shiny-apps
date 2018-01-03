@@ -16,14 +16,15 @@ DataPrep <- function(all) {
     geo_reply <- geocode(all$FullAddress, override_limit=TRUE)
     all <- cbind(all, geo_reply)
     
-    #complete <- complete.cases(all)
-    #completed <- all[complete,]
-    #incomplete <- all[!complete,]
+    complete <- complete.cases(all)
+    completed <- all[complete,]
+    incomplete <- all[!complete,]
     
     all <- select(all, Incident.Date, FullAddress, lat, lon, X..Killed, X..Injured)
     names(all) <- c("Date", "Address", "lat", "lon", "Killed", "Injured")
     
-    all$Date <- as.Date(all$Date, format="%d-%B-%y")
+    #all$Date <- as.Date(all$Date, format="%d-%B-%y")
+    all$Date <- as.Date(all$Date, format = "%B %d, %Y") #new 2017 format
     #all$Date <- as.POSIXct(all$Date, format="%Y-%m-%d") #needed for animation?
     all <- all[order(all$Date), ]
     
@@ -66,7 +67,7 @@ all <- rbind(GunStatic, newcomplete)
 all <- all[order(all$Date), ]
 
 # return only those finished (remove once api limit reset)
-complete <- complete.cases(all)
-completedf <- all[complete,]
+#complete <- complete.cases(all)
+#completedf <- all[complete,]
 
 saveRDS(all, "Data/GunsGeo.rds")
