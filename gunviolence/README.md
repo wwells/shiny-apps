@@ -1,6 +1,6 @@
 # Gun Violence Shiny App
 
-Deployed at:  http://gunviolence.waltwells.com/
+Deployed at:  hhttps://wwells.shinyapps.io/gunviolence/
 
 ## Docker
 
